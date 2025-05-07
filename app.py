@@ -16,15 +16,30 @@ load_dotenv()
 # Streamlit page configuration
 st.set_page_config(page_title="Indian News Feed", layout="wide")
 
-# Minimalistic CSS for clean, mobile-friendly UI
+# Enhanced CSS for beautiful, tile-based UI
 st.markdown("""
     <style>
-    body { font-family: 'Arial', sans-serif; background-color: #f5f5f5; }
-    .news-card { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin: 10px; }
-    .news-title { font-size: 1.2em; font-weight: bold; color: #333; }
-    .news-source { font-size: 0.9em; color: #666; }
-    .stButton>button { background-color: #007bff; color: white; border-radius: 5px; padding: 10px 20px; }
-    @media (max-width: 600px) { .news-card { padding: 10px; margin: 5px; } .news-title { font-size: 1em; } }
+    body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f6; }
+    .header { text-align: center; padding: 20px; background-color: #007bff; color: white; border-radius: 10px; margin-bottom: 20px; }
+    .header h1 { font-size: 2.5em; margin: 0; }
+    .header p { font-size: 1.2em; margin: 5px 0; }
+    .search-bar { margin: 20px 0; text-align: center; }
+    .search-bar input { padding: 10px; width: 50%; border-radius: 5px; border: 1px solid #ccc; font-size: 1em; }
+    .tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; padding: 20px; }
+    .news-tile { background-color: #ffffff; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); overflow: hidden; transition: transform 0.2s; }
+    .news-tile:hover { transform: translateY(-5px); }
+    .news-image { width: 100%; height: 150px; object-fit: cover; }
+    .news-content { padding: 15px; }
+    .news-title { font-size: 1.3em; font-weight: bold; color: #333; margin: 0 0 10px; }
+    .news-source { font-size: 0.9em; color: #666; margin-bottom: 10px; }
+    .news-summary { font-size: 1em; color: #444; line-height: 1.5; }
+    .stButton>button { background-color: #007bff; color: white; border-radius: 5px; padding: 10px 20px; display: block; margin: 20px auto; }
+    @media (max-width: 600px) {
+        .tile-grid { grid-template-columns: 1fr; }
+        .news-tile { margin: 0 10px; }
+        .search-bar input { width: 80%; }
+        .header h1 { font-size: 2em; }
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -34,6 +49,15 @@ VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY")
 
 # Initialize NewsAPI client
 newsapi = NewsApiClient(api_key=NEWSAPI_KEY) if NEWSAPI_KEY else None
+
+# Function to generate a summary
+def generate_summary(description):
+    if not description or description == "No description available.":
+        return "Summary not available."
+    # Use first sentence or truncate to 150 characters
+    sentences = description.split(". ")
+    summary = sentences[0] + "." if len(sentences) > 0 else description
+    return summary[:150] + "..." if len(summary) > 150 else summary
 
 # Function to fetch news from NewsAPI
 @st.cache_data(ttl=300)  # Cache for 5 minutes
@@ -59,28 +83,40 @@ def fetch_indian_news(query="india"):
 
 # Main app
 def main():
-    st.title("Indian News Feed")
-    st.markdown("Stay updated with live news from India, delivered with push notifications.")
+    # Header
+    st.markdown("""
+        <div class="header">
+            <h1>Indian News Feed</h1>
+            <p>Stay updated with the latest news from India, beautifully presented.</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # Search bar for news topics
-    search_query = st.text_input("Search News (e.g., politics, sports)", value="india")
+    # Search bar
+    search_query = st.text_input("Search News (e.g., politics, sports)", value="india", key="search", help="Enter a topic to filter news")
 
     # Fetch and display news
     if search_query:
         with st.spinner("Fetching news..."):
             news_articles = fetch_indian_news(search_query)
         if news_articles:
+            st.markdown('<div class="tile-grid">', unsafe_allow_html=True)
             for article in news_articles:
+                image_url = article.get('urlToImage', 'https://via.placeholder.com/300x150?text=No+Image')
+                summary = generate_summary(article.get('description', 'No description available.'))
                 st.markdown(
                     f"""
-                    <div class='news-card'>
-                        <div class='news-title'><a href='{article['url']}' target='_blank'>{article['title']}</a></div>
-                        <div class='news-source'>{article['source']['name']} | {article['publishedAt'][:10]}</div>
-                        <p>{article.get('description', 'No description available.')}</p>
+                    <div class="news-tile">
+                        <img src="{image_url}" class="news-image" alt="News Image">
+                        <div class="news-content">
+                            <div class="news-title">{article['title']}</div>
+                            <div class="news-source">{article['source']['name']} | {article['publishedAt'][:10]}</div>
+                            <div class="news-summary">{summary}</div>
+                        </div>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
+            st.markdown('</div>', unsafe_allow_html=True)
         else:
             st.warning("No news articles found. Try a different search term or check your API key.")
 
