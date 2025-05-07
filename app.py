@@ -33,7 +33,7 @@ st.markdown("""
     .news-title { font-size: 1.3em; font-weight: bold; color: #333; margin: 0 0 10px; }
     .news-source { font-size: 0.9em; color: #666; margin-bottom: 10px; }
     .news-summary { font-size: 1em; color: #444; line-height: 1.5; }
-    .stButton>button { background-color: #007bff; color: white; border-radius: 5px; padding: 10px 20px; display: block; margin: 20px auto; }
+    .stButton>button { background-color: #007bff; color: white; border-radius: 5px; padding: 10px 20px; margin: 10px; }
     @media (max-width: 600px) {
         .tile-grid { grid-template-columns: 1fr; }
         .news-tile { margin: 0 10px; }
@@ -50,11 +50,16 @@ VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY")
 # Initialize NewsAPI client
 newsapi = NewsApiClient(api_key=NEWSAPI_KEY) if NEWSAPI_KEY else None
 
+# Initialize session state
+if 'news_articles' not in st.session_state:
+    st.session_state.news_articles = []
+if 'last_query' not in st.session_state:
+    st.session_state.last_query = "india"
+
 # Function to generate a summary
 def generate_summary(description):
     if not description or description == "No description available.":
         return "Summary not available."
-    # Use first sentence or truncate to 150 characters
     sentences = description.split(". ")
     summary = sentences[0] + "." if len(sentences) > 0 else description
     return summary[:150] + "..." if len(summary) > 150 else summary
@@ -75,7 +80,6 @@ def fetch_indian_news(query="india"):
             st.error(f"NewsAPI error: {response.get('message', 'Unknown error')}")
             return []
         articles = response.get("articles", [])
-        st.write(f"Debug: Fetched {len(articles)} articles")  # Debugging output
         return articles[:10]  # Return top 10 news articles
     except Exception as e:
         st.error(f"Error fetching news: {e}")
@@ -91,34 +95,44 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
-    # Search bar
-    search_query = st.text_input("Search News (e.g., politics, sports)", value="india", key="search", help="Enter a topic to filter news")
+    # Search bar and refresh button
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        search_query = st.text_input("Search News (e.g., politics, sports)", value="india", key="search", help="Enter a topic to filter news")
+    with col2:
+        if st.button("Refresh"):
+            st.session_state.news_articles = []
+            st.session_state.last_query = search_query
 
-    # Fetch and display news
-    if search_query:
+    # Fetch news only if query changes or refresh is clicked
+    if search_query != st.session_state.last_query or not st.session_state.news_articles:
         with st.spinner("Fetching news..."):
-            news_articles = fetch_indian_news(search_query)
-        if news_articles:
-            st.markdown('<div class="tile-grid">', unsafe_allow_html=True)
-            for article in news_articles:
-                image_url = article.get('urlToImage', 'https://via.placeholder.com/300x150?text=No+Image')
-                summary = generate_summary(article.get('description', 'No description available.'))
-                st.markdown(
-                    f"""
-                    <div class="news-tile">
-                        <img src="{image_url}" class="news-image" alt="News Image">
-                        <div class="news-content">
-                            <div class="news-title">{article['title']}</div>
-                            <div class="news-source">{article['source']['name']} | {article['publishedAt'][:10]}</div>
-                            <div class="news-summary">{summary}</div>
-                        </div>
+            st.session_state.news_articles = fetch_indian_news(search_query)
+            st.session_state.last_query = search_query
+
+    # Display news
+    if st.session_state.news_articles:
+        st.write(f"Debug: Displaying {len(st.session_state.news_articles)} articles")
+        st.markdown('<div class="tile-grid">', unsafe_allow_html=True)
+        for article in st.session_state.news_articles:
+            image_url = article.get('urlToImage', 'https://via.placeholder.com/300x150?text=No+Image')
+            summary = generate_summary(article.get('description', 'No description available.'))
+            st.markdown(
+                f"""
+                <div class="news-tile">
+                    <img src="{image_url}" class="news-image" alt="News Image">
+                    <div class="news-content">
+                        <div class="news-title">{article['title']}</div>
+                        <div class="news-source">{article['source']['name']} | {article['publishedAt'][:10]}</div>
+                        <div class="news-summary">{summary}</div>
                     </div>
-                    """,
-                    unsafe_allow_html=True
-                )
-            st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            st.warning("No news articles found. Try a different search term or check your API key.")
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.warning("No news articles found. Try a different search term or check your API key.")
 
     # Push notification subscription (client-side JS)
     if VAPID_PUBLIC_KEY and VAPID_PUBLIC_KEY != "placeholder_vapid_key":
@@ -136,7 +150,7 @@ def main():
                         userVisibleOnly: true,
                         applicationServerKey: '{VAPID_PUBLIC_KEY}'
                     }});
-                    await fetch('/subscribe', {{
+                    await fetch('https://your-server.herokuapp.com/subscribe', {{
                         method: 'POST',
                         body: JSON.stringify(subscription),
                         headers: {{ 'Content-Type': 'application/json' }}
