@@ -81,7 +81,7 @@ st.markdown("""
 
     .news-tile {
         flex: 0 0 auto;
-        width: 320px;
+        width: 420px;
         background: rgba(255, 255, 255, 0.8);
         backdrop-filter: blur(6px);
         border-radius: 18px;
@@ -181,15 +181,15 @@ def main():
     """, unsafe_allow_html=True)
 
     query = st.text_input("Search news", value=st.session_state.last_query)
-    topic = st.selectbox("Or select a topic", ["india", "politics", "business", "stocks", "sports", "technology", "entertainment"])
+    #  = st.selectbox("Or select a ", ["india", "politics", "business", "stocks", "sports", "technology", "entertainment"])
     if st.button("Refresh Feed"):
         st.session_state.news_articles = []
-        st.session_state.last_query = query or topic
+        st.session_state.last_query = query
 
     # 🗞 Get news
     if not st.session_state.news_articles:
         with st.spinner("Loading news..."):
-            st.session_state.news_articles = fetch_news(query or topic)
+            st.session_state.news_articles = fetch_news(query)
 
     articles = st.session_state.news_articles
     if articles:
@@ -209,7 +209,7 @@ def main():
             """, unsafe_allow_html=True)
         st.markdown("</div>", unsafe_allow_html=True)
     else:
-        st.info("No news found. Try a different topic.")
+        st.info("No news found. Try a different .")
 
     st.markdown("</div>", unsafe_allow_html=True)
 
