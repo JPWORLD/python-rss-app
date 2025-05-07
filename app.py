@@ -24,23 +24,19 @@ st.markdown("""
     html {
         scroll-behavior: smooth;
     }
-
     body {
         background: linear-gradient(to right, #eef2f3, #8e9eab);
     }
-
     .main-container {
         max-width: 1400px;
         margin: auto;
         padding: 1rem;
         animation: fadeIn 1.5s ease-in;
     }
-
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
-
     .header {
         background: rgba(255, 255, 255, 0.6);
         backdrop-filter: blur(8px);
@@ -50,38 +46,54 @@ st.markdown("""
         text-align: center;
         margin-bottom: 30px;
     }
-
     .header h1 {
         font-size: 2.6rem;
         color: #003366;
         margin: 0;
     }
-
     .header p {
         font-size: 1.1rem;
         color: #333;
         margin-top: 10px;
     }
 
+    /* Horizontal scrolling container */
     .tile-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        display: flex;
+        flex-direction: row;
         gap: 25px;
+        overflow-x: auto;
+        padding-bottom: 1rem;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+        margin-bottom: 2rem;
+        /* Center the tiles if there's extra space */
+        justify-content: center;
+        margin: 0 auto;
+    }
+    .tile-grid::-webkit-scrollbar {
+        height: 10px;
+    }
+    .tile-grid::-webkit-scrollbar-thumb {
+        background-color: #aaa;
+        border-radius: 5px;
     }
 
     .news-tile {
+        flex: 0 0 auto;
+        width: 320px;
         background: rgba(255, 255, 255, 0.8);
         backdrop-filter: blur(6px);
         border-radius: 18px;
         overflow: hidden;
         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        transition: transform 0.4s, box-shadow 0.3s ease;
         animation: fadeIn 0.6s ease-in;
+        perspective: 800px;
     }
-
     .news-tile:hover {
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        transform: rotateY(12deg) scale(1.05);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
     }
 
     .news-image {
@@ -89,29 +101,24 @@ st.markdown("""
         height: 180px;
         object-fit: cover;
     }
-
     .news-content {
         padding: 1.2rem;
     }
-
     .news-title {
         font-size: 1.2rem;
         font-weight: bold;
         color: #222;
     }
-
     .news-source {
         font-size: 0.85rem;
         color: #666;
         margin-top: 5px;
     }
-
     .news-summary {
         font-size: 0.95rem;
         color: #333;
         margin-top: 10px;
     }
-
     .stButton > button {
         background-color: #003366;
         color: white;
@@ -120,15 +127,16 @@ st.markdown("""
         font-weight: bold;
         transition: all 0.2s ease;
     }
-
     .stButton > button:hover {
         background-color: #00509e;
         transform: scale(1.05);
     }
-
     @media (max-width: 600px) {
         .header h1 {
             font-size: 2rem;
+        }
+        .news-tile {
+            width: 280px;
         }
         .news-image {
             height: 150px;
@@ -142,7 +150,8 @@ st.markdown("""
 def generate_summary(description):
     if not description:
         return "Summary not available."
-    return description.split(". ")[0] + "."
+    # Return at least 200 characters, or the entire description if shorter
+    return description[:2000] + ("..." if len(description) > 200 else "")
 
 # 🔄 Fetch News
 @st.cache_data(ttl=300)
@@ -172,7 +181,7 @@ def main():
     """, unsafe_allow_html=True)
 
     query = st.text_input("Search news", value=st.session_state.last_query)
-    topic = st.selectbox("Or select a topic", ["india", "politics", "business", "sports", "technology", "entertainment"])
+    topic = st.selectbox("Or select a topic", ["india", "politics", "business", "stocks", "sports", "technology", "entertainment"])
     if st.button("Refresh Feed"):
         st.session_state.news_articles = []
         st.session_state.last_query = query or topic
